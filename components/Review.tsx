@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
 import { StrategyItem, Variant } from '../types';
+import { getTodayDate } from '../utils';
 
 interface ReviewProps {
     strategies: StrategyItem[];
     setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-    emulatedDate: string;
 }
 
 const REVIEW_STATUS_OPTIONS = [
@@ -14,7 +13,7 @@ const REVIEW_STATUS_OPTIONS = [
     { label: 'Needs Spend', color: 'bg-amber-100 text-amber-800 border-amber-200' },
 ];
 
-const Review: React.FC<ReviewProps> = ({ strategies, setStrategies, emulatedDate }) => {
+const Review: React.FC<ReviewProps> = ({ strategies, setStrategies }) => {
     const [selectedDetailText, setSelectedDetailText] = useState<string | null>(null);
 
     // Filter State
@@ -65,8 +64,7 @@ const Review: React.FC<ReviewProps> = ({ strategies, setStrategies, emulatedDate
         if (parts.length !== 3) return '-';
 
         const launch = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-        const emulatedParts = emulatedDate.split('/');
-        const now = new Date(parseInt(emulatedParts[2]), parseInt(emulatedParts[1]) - 1, parseInt(emulatedParts[0]));
+        const now = new Date();
         const diffTime = Math.abs(now.getTime() - launch.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 

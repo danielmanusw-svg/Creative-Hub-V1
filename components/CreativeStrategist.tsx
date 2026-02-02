@@ -1,26 +1,26 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StrategyItem, Variant } from '../types';
+import { getTodayDate } from '../utils';
 
 interface CreativeStrategistProps {
   strategies: StrategyItem[];
   setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-  emulatedDate: string;
 }
 
 const PRODUCT_OPTIONS = [
-  'OG plastic filter',
-  'LED plastic filter',
-  'OG stainless steel',
-  'New stainless steel',
-  'Pet filter',
+  'Stainless Steel Tap Filter',
+  'Plastic Tap Filter (OG)',
+  'Shower Filter',
+  'Bath Filter',
+  'Pet Filter (Cat)',
+  'Filter Bottle',
 ];
 
 const FORMAT_OPTIONS = [
   { label: 'UGC', color: 'bg-rose-100 text-rose-800 border-rose-200', activeRing: 'ring-rose-500' },
-  { label: 'Studio', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', activeRing: 'ring-indigo-500' },
-  { label: 'Static', color: 'bg-amber-100 text-amber-800 border-amber-200', activeRing: 'ring-amber-500' },
-  { label: 'GIF', color: 'bg-teal-100 text-teal-800 border-teal-200', activeRing: 'ring-teal-500' },
+  { label: 'STATIC', color: 'bg-amber-100 text-amber-800 border-amber-200', activeRing: 'ring-amber-500' },
+  { label: 'B-ROLL', color: 'bg-indigo-100 text-indigo-800 border-indigo-200', activeRing: 'ring-indigo-500' },
+  { label: 'INFO', color: 'bg-teal-100 text-teal-800 border-teal-200', activeRing: 'ring-teal-500' },
 ];
 
 const STATUS_OPTIONS = [
@@ -37,7 +37,7 @@ const LANDING_PAGE_OPTIONS = [
   { label: 'Listicle', color: 'bg-amber-100 text-amber-800 border-amber-200', activeRing: 'ring-amber-500' },
 ];
 
-const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, setStrategies, emulatedDate }) => {
+const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, setStrategies }) => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(['1', '2', '3', '4']));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
@@ -46,6 +46,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
   const [isEditMode, setIsEditMode] = useState(false);
   const [hideCompleted, setHideCompleted] = useState(false);
   const [hideReadyToEdit, setHideReadyToEdit] = useState(false);
+  const [hideInProgress, setHideInProgress] = useState(false);
   const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
 
   const [rowToDelete, setRowToDelete] = useState<StrategyItem | null>(null);
@@ -60,7 +61,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
 
 
 
-  const [newStrategy, setNewStrategy] = useState({ product: '', format: '', description: '' });
+  const [newStrategy, setNewStrategy] = useState({ product: '', format: '', description: '', batchCode: '' });
   const [newVariant, setNewVariant] = useState<Partial<Variant>>({
     name: '',
     status: 'In Progress',
@@ -172,7 +173,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>, strategyId: string, variantId: string) => {
     e.stopPropagation();
     const nextStatus = e.target.value;
-    const now = emulatedDate;
+    const now = getTodayDate();
     const strategy = strategies.find(s => s.id === strategyId);
     const variant = strategy?.variants.find(v => v.id === variantId);
 
@@ -210,7 +211,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
     setIsEditMode(false);
     setEditingItemId(null);
     setEditingVariantId(null);
-    setNewStrategy({ product: '', format: '', description: '' });
+    setNewStrategy({ product: '', format: '', description: '', batchCode: '' });
     setIsModalOpen(true);
   };
 
@@ -264,6 +265,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
       setNewStrategy({
         product: item.product,
         format: item.format,
+        batchCode: item.batchCode || '',
         description: item.description
       });
       setIsModalOpen(true);
@@ -351,7 +353,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
       return;
     }
 
-    const now = emulatedDate;
+    const now = getTodayDate();
 
     if (editingVariantId) {
       setStrategies(strategies.map(s => s.id === headerId ? {
@@ -386,7 +388,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
         headerId: headerId,
         name: newVariant.name!,
         status: newVariant.status!,
-        createdDate: emulatedDate,
+        createdDate: getTodayDate(),
         launchDate: '',
         reviewDate: newVariant.status === 'Ready to edit' ? now : '',
         landingPage: newVariant.landingPage!,
@@ -414,7 +416,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingItemId(null);
-    setNewStrategy({ product: '', format: '', description: '' });
+    setNewStrategy({ product: '', format: '', description: '', batchCode: '' });
   };
 
   const handleSaveStrategy = () => {
@@ -425,6 +427,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
         ...s,
         product: newStrategy.product,
         format: newStrategy.format,
+        batchCode: newStrategy.batchCode,
         description: newStrategy.description
       } : s));
       setIsEditMode(false);
@@ -433,6 +436,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
         id: Date.now().toString(),
         product: newStrategy.product,
         format: newStrategy.format,
+        batchCode: newStrategy.batchCode,
         description: newStrategy.description,
         variants: []
       };
@@ -465,11 +469,12 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
 
   const getProductBadgeColor = (label: string) => {
     const lower = label.toLowerCase();
-    if (lower.includes('og plastic')) return 'bg-blue-100 text-blue-800 border-blue-200';
-    if (lower.includes('led plastic')) return 'bg-purple-100 text-purple-800 border-purple-200';
-    if (lower.includes('og stainless')) return 'bg-zinc-200 text-zinc-800 border-zinc-300';
-    if (lower.includes('new stainless')) return 'bg-slate-300 text-slate-900 border-slate-400';
+    if (lower.includes('stainless steel')) return 'bg-zinc-200 text-zinc-800 border-zinc-300';
+    if (lower.includes('plastic tap')) return 'bg-blue-100 text-blue-800 border-blue-200';
+    if (lower.includes('shower')) return 'bg-purple-100 text-purple-800 border-purple-200';
+    if (lower.includes('bath')) return 'bg-sky-100 text-sky-800 border-sky-200';
     if (lower.includes('pet filter')) return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    if (lower.includes('bottle')) return 'bg-amber-100 text-amber-800 border-amber-200';
     return 'bg-gray-100 text-gray-800';
   };
 
@@ -481,7 +486,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
   };
   const getLandingColor = (label: string) => LANDING_PAGE_OPTIONS.find(opt => opt.label === label)?.color || 'bg-gray-100 text-gray-800';
 
-  const isFormValid = newStrategy.product && newStrategy.format && newStrategy.description.trim().length > 0;
+  const isFormValid = newStrategy.product && newStrategy.format && newStrategy.batchCode && newStrategy.description.trim().length > 0;
   const isVariantFormValid = newVariant.name && newVariant.landingPage && newVariant.concept;
 
   const inputClass = "w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-white placeholder-slate-500 shadow-inner";
@@ -561,6 +566,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
             {isEditMode && <span className="text-amber-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Active Edit Mode</span>}
             {!isRemovalMode && !isEditMode && (
               <>
+                <button onClick={() => setHideInProgress(!hideInProgress)} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all border uppercase tracking-widest ${hideInProgress ? 'bg-indigo-600 text-white border-indigo-700 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}>{hideInProgress ? 'Show Progress' : 'Hide Progress'}</button>
                 <button onClick={() => setHideReadyToEdit(!hideReadyToEdit)} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all border uppercase tracking-widest ${hideReadyToEdit ? 'bg-indigo-600 text-white border-indigo-700 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}>{hideReadyToEdit ? 'Show Ready' : 'Hide Ready'}</button>
                 <button onClick={() => setHideCompleted(!hideCompleted)} className={`px-4 py-1.5 rounded-full text-[10px] font-black transition-all border uppercase tracking-widest ${hideCompleted ? 'bg-indigo-600 text-white border-indigo-700 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}>{hideCompleted ? 'Show Done' : 'Hide Done'}</button>
               </>
@@ -572,6 +578,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
             <thead>
               <tr className="bg-gray-50 text-gray-400 text-[10px] uppercase font-black tracking-widest border-b border-gray-100">
                 <th className="w-12 px-4 py-4"></th>
+                <th className="w-[120px] px-4 py-4">Batch Code</th>
                 <th className="w-[180px] px-4 py-4 relative z-50">
                   <div className="flex items-center">
                     <span>Product</span>
@@ -626,7 +633,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
                 </th>
 
                 <th className="px-4 py-4">Description</th>
-                <th className="w-[100px] px-4 py-4 text-center">Variants</th>
+                <th className="w-[160px] px-4 py-4 text-center">Variants</th>
                 <th className="w-[100px] px-4 py-4 text-center">Add</th>
               </tr>
             </thead>
@@ -635,10 +642,44 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
                 <React.Fragment key={item.id}>
                   <tr onClick={() => handleHeaderRowClick(item)} className={`transition-all duration-200 border-b border-gray-50 group relative ${isRemovalMode || isAdminDeleteMode || isEditMode ? `cursor-pointer ${isRemovalMode || isAdminDeleteMode ? 'hover:bg-red-100 bg-red-50/10' : 'hover:bg-amber-100 bg-amber-50/10'}` : `hover:bg-slate-50 cursor-pointer ${expandedRows.has(item.id) ? 'bg-indigo-50/30' : ''}`}`}>
                     <td className="px-4 py-5 text-center"><i className={`fa-solid fa-chevron-right text-xs text-gray-300 transition-transform ${expandedRows.has(item.id) ? 'rotate-90 text-indigo-400' : ''}`}></i></td>
+                    <td className="px-4 py-5 overflow-hidden"><span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 block truncate text-center uppercase tracking-widest">{item.batchCode || '-'}</span></td>
                     <td className="px-4 py-5 overflow-hidden"><span className={`px-3 py-1 rounded-full text-xs font-bold border ${getProductBadgeColor(item.product)} block truncate text-center shadow-sm`}>{item.product}</span></td>
                     <td className="px-4 py-5 overflow-hidden"><span className={`px-3 py-1 rounded-full text-xs font-bold border ${getFormatColor(item.format)} block truncate text-center shadow-sm`}>{item.format}</span></td>
                     <td className="px-4 py-5 text-base text-gray-700 truncate font-medium">{item.description}</td>
-                    <td className="px-4 py-5 text-center"><span className="inline-flex items-center justify-center bg-gray-100 text-gray-700 font-bold text-xs rounded-full w-6 h-6">{item.variants.length}</span></td>
+                    <td className="px-4 py-5 text-center">
+                      <div className="flex items-center justify-center -space-x-1.5 hover:space-x-1 transition-all duration-300">
+                        {(() => {
+                          const counts = item.variants.reduce((acc, v) => {
+                            const isRejected = v.status === 'Rejected';
+                            const isRequested = v.status === 'In Progress';
+                            const isScripting = v.status === 'Ready to edit' && !v.editDate;
+                            const isProduction = v.status === 'Ready to edit' && v.editDate && !v.compDate;
+                            const isCompleted = v.status === 'Completed' || v.status === 'In Review' || (v.status === 'Ready to edit' && v.compDate);
+                            const isValidated = ['Ready to Launch', 'Live', 'Canceled'].includes(v.status);
+
+                            if (isRejected) acc.rejected++;
+                            else if (isRequested) acc.requested++;
+                            else if (isScripting) acc.scripting++;
+                            else if (isProduction) acc.production++;
+                            else if (isCompleted) acc.completed++;
+                            else if (isValidated) acc.validated++;
+                            return acc;
+                          }, { rejected: 0, requested: 0, scripting: 0, production: 0, completed: 0, validated: 0 });
+
+                          return (
+                            <>
+                              {counts.rejected > 0 && <span className="w-6 h-6 flex items-center justify-center rounded-full bg-red-600 text-white border-2 border-white text-[10px] font-black shadow-sm ring-1 ring-red-700" title="Rejected">{counts.rejected}</span>}
+                              {counts.requested > 0 && <span className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 border-2 border-white text-[10px] font-black shadow-sm ring-1 ring-blue-200" title="Requested">{counts.requested}</span>}
+                              {counts.scripting > 0 && <span className="w-6 h-6 flex items-center justify-center rounded-full bg-amber-100 text-amber-600 border-2 border-white text-[10px] font-black shadow-sm ring-1 ring-amber-200" title="Scripting">{counts.scripting}</span>}
+                              {counts.production > 0 && <span className="w-6 h-6 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-500 border-2 border-white text-[10px] font-black shadow-sm ring-1 ring-emerald-100" title="Production">{counts.production}</span>}
+                              {counts.completed > 0 && <span className="w-6 h-6 flex items-center justify-center rounded-full bg-green-600 text-white border-2 border-white text-[10px] font-black shadow-sm ring-1 ring-green-700" title="Completed">{counts.completed}</span>}
+                              {counts.validated > 0 && <span className="w-6 h-6 flex items-center justify-center rounded-full bg-white text-emerald-600 border-2 border-white text-[10px] font-black shadow-sm ring-1 ring-emerald-600" title="Validated">{counts.validated}</span>}
+                              {item.variants.length === 0 && <span className="text-slate-300 text-[10px] font-black tracking-widest uppercase">Zero</span>}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </td>
                     <td className="px-4 py-5 text-center">
                       <button onClick={(e) => openVariantModal(e, item.id)} className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><i className="fa-solid fa-plus text-xs"></i></button>
                     </td>
@@ -673,6 +714,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
                                 .filter(v => {
                                   const mappedStatus = (v.status === 'Rejected' && v.rejectionHistory?.[v.rejectionHistory.length - 1]?.destination === 'Editor') ? 'Ready to edit' : v.status;
                                   const isVal = ['Ready to Launch', 'In Review', 'Live', 'Canceled'].includes(v.status);
+                                  if (hideInProgress && v.status === 'In Progress') return false;
                                   if (hideCompleted && (v.status === 'Completed' || isVal)) return false;
                                   if (hideReadyToEdit && mappedStatus === 'Ready to edit') return false;
                                   if (appliedStartDate || appliedEndDate) {
@@ -914,6 +956,10 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
                       return <button key={opt.label} onClick={() => setNewStrategy({ ...newStrategy, format: opt.label })} className={`px-4 py-4 rounded-xl border-2 text-xs font-black uppercase tracking-widest transition-all text-center flex items-center justify-center h-full min-h-[50px] ${isSelected ? `${opt.color} border-current ring-4 ring-opacity-20 ${opt.activeRing} shadow-inner` : 'border-white bg-white text-gray-400 hover:border-indigo-200 shadow-sm'}`}>{opt.label}</button>;
                     })}
                   </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Batch Code <span className="text-red-500">*</span></label>
+                  <input type="text" value={newStrategy.batchCode} onChange={(e) => setNewStrategy({ ...newStrategy, batchCode: e.target.value })} placeholder="e.g. SSJANW1" className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-800 font-bold shadow-sm" />
                 </div>
                 <div>
                   <label className="block text-xs font-black text-gray-400 mb-2 uppercase tracking-widest">Campaign Overview <span className="text-red-500">*</span></label>

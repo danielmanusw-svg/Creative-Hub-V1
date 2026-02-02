@@ -30,6 +30,7 @@ export interface StrategyItem {
   id: string;
   product: string;
   format: string;
+  batchCode?: string;
   description: string;
   variants: Variant[];
 }

@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
 import { StrategyItem, Variant } from '../types';
+import { getTodayDate } from '../utils';
 
 interface EditorProps {
   strategies: StrategyItem[];
   setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-  emulatedDate: string;
 }
 
 const STATUS_OPTIONS = [
@@ -16,7 +15,7 @@ const STATUS_OPTIONS = [
 ];
 
 
-const Editor: React.FC<EditorProps> = ({ strategies, setStrategies, emulatedDate }) => {
+const Editor: React.FC<EditorProps> = ({ strategies, setStrategies }) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [hideCompleted, setHideCompleted] = useState(false);
   const [editingVideoVariant, setEditingVideoVariant] = useState<Variant | null>(null);
@@ -32,6 +31,12 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies, emulatedDate
 
 
   const [editSortOrder, setEditSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Date Filtering State
+  const [tempStartDate, setTempStartDate] = useState<string>('');
+  const [tempEndDate, setTempEndDate] = useState<string>('');
+  const [appliedStartDate, setAppliedStartDate] = useState<string>('');
+  const [appliedEndDate, setAppliedEndDate] = useState<string>('');
 
   const parseDate = (dateStr: string) => {
     if (!dateStr) return 0;
@@ -64,32 +69,61 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies, emulatedDate
         return b.id.localeCompare(a.id);
       });
 
-  }, [strategies]);
+  }, [strategies, editSortOrder]);
 
   const approvalQueue = useMemo(() => {
-    return mirroredVariants.filter(v => v.status === 'Ready to edit' && !v.editDate);
+    return mirroredVariants
+      .filter(v => v.status === 'Ready to edit' && !v.editDate)
+      .sort((a, b) => a.id.localeCompare(b.id)); // Oldest first (ascending IDs)
   }, [mirroredVariants]);
 
   const productionQueue = useMemo(() => {
-    return mirroredVariants.filter(v =>
-      (v.status === 'Ready to edit' && v.editDate) ||
-      v.status === 'Rejected' ||
-      v.status === 'In Progress' ||
-      v.status === 'Completed' ||
-      ['Ready to Launch', 'In Review', 'Live', 'Canceled'].includes(v.status)
-    );
-  }, [mirroredVariants]);
+    return mirroredVariants
+      .filter(v =>
+        (v.status === 'Ready to edit' && v.editDate) ||
+        v.status === 'Rejected' ||
+        v.status === 'In Progress' ||
+        v.status === 'Completed' ||
+        ['Ready to Launch', 'In Review', 'Live', 'Canceled'].includes(v.status)
+      )
+      .filter(v => {
+        if (appliedStartDate || appliedEndDate) {
+          if (!v.editDate) return false;
+          const vTime = parseDate(v.editDate);
+          const startTime = appliedStartDate ? new Date(appliedStartDate).getTime() : 0;
+          const endTime = appliedEndDate ? new Date(appliedEndDate).getTime() : Infinity;
+          if (vTime < startTime || vTime > endTime) return false;
+        }
+        return true;
+      });
+  }, [mirroredVariants, appliedStartDate, appliedEndDate]);
 
   const filteredProductionQueue = useMemo(() => {
     return productionQueue.filter(v => !hideCompleted || (v.status !== 'Completed' && !['Ready to Launch', 'In Review', 'Live', 'Canceled'].includes(v.status)));
   }, [productionQueue, hideCompleted]);
 
   const handleAccept = (variantId: string) => {
-    const now = emulatedDate;
+    const now = getTodayDate();
     setStrategies(prev => prev.map(s => ({
       ...s,
       variants: s.variants.map(v => v.id === variantId ? { ...v, editDate: now } : v)
     })));
+  };
+
+  const handleApplyDateFilter = () => {
+    if (!tempStartDate || !tempEndDate) {
+      setErrorModal({ show: true, message: 'Please select both a "From" and "To" date to apply the filter.' });
+      return;
+    }
+    setAppliedStartDate(tempStartDate);
+    setAppliedEndDate(tempEndDate);
+  };
+
+  const handleClearDateFilter = () => {
+    setTempStartDate('');
+    setTempEndDate('');
+    setAppliedStartDate('');
+    setAppliedEndDate('');
   };
 
   const handleReject = (variantId: string) => {
@@ -133,7 +167,7 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies, emulatedDate
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>, variantId: string) => {
     e.stopPropagation();
     const nextStatus = e.target.value;
-    const now = emulatedDate;
+    const now = getTodayDate();
 
     const currentVariant = mirroredVariants.find(v => v.id === variantId);
 
@@ -214,7 +248,38 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies, emulatedDate
           <h2 className="text-xl font-bold text-gray-800">Queue Management</h2>
         </div>
 
-
+        {/* Squished Date Filter - Left Side, One Line */}
+        <div className="flex items-center bg-gray-50 p-2 rounded-xl border border-gray-200 gap-3">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-calendar-day text-slate-400 text-xs"></i>
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">From Edit Date</span>
+              <input
+                type="date"
+                value={tempStartDate}
+                onChange={(e) => setTempStartDate(e.target.value)}
+                className="bg-white border border-gray-300 rounded px-1 py-0.5 text-[10px] focus:ring-1 focus:ring-indigo-500 outline-none w-28 h-6"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col">
+              <span className="text-[8px] font-black text-slate-400 uppercase leading-none mb-0.5">To Edit Date</span>
+              <input
+                type="date"
+                value={tempEndDate}
+                onChange={(e) => setTempEndDate(e.target.value)}
+                className="bg-white border border-gray-300 rounded px-1 py-0.5 text-[10px] focus:ring-1 focus:ring-indigo-500 outline-none w-28 h-6"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-1 ml-1 border-l border-gray-200 pl-2">
+            <button onClick={handleApplyDateFilter} className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm">OK</button>
+            {(appliedStartDate || appliedEndDate) && (
+              <button onClick={handleClearDateFilter} className="bg-white border border-gray-300 text-slate-400 px-2 py-1.5 rounded-lg text-[10px] font-black hover:text-red-500 hover:border-red-200 transition-all"><i className="fa-solid fa-xmark"></i></button>
+            )}
+          </div>
+        </div>
 
         <button onClick={() => setIsEditMode(!isEditMode)} className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all border-2 ${isEditMode ? 'bg-amber-100 text-amber-700 border-amber-300 ring-2 ring-amber-200' : 'bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50'}`}>
 

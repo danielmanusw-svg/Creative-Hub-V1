@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StrategyItem, Variant } from '../types';
+import { getTodayDate } from '../utils';
 
 interface ValidationProps {
   strategies: StrategyItem[];
   setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-  emulatedDate: string;
 }
 
 const VA_STATUS_OPTIONS = [
@@ -17,7 +16,7 @@ const VA_STATUS_OPTIONS = [
 
 
 
-const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies, emulatedDate }) => {
+const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies }) => {
   const [selectedDetailText, setSelectedDetailText] = useState<string | null>(null);
 
   const [hideLive, setHideLive] = useState(false);
@@ -115,7 +114,7 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies, emul
       setErrorModal({ show: true, message: 'Please provide a reason for rejection.' });
       return;
     }
-    const now = emulatedDate;
+    const now = getTodayDate();
     setStrategies(prev => prev.map(s => ({
       ...s,
       variants: s.variants.map(v => {
@@ -145,7 +144,7 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies, emul
       setErrorModal({ show: true, message: 'Please provide a reason for rejection.' });
       return;
     }
-    const now = emulatedDate;
+    const now = getTodayDate();
     setStrategies(prev => prev.map(s => ({
       ...s,
       variants: s.variants.map(v => {
@@ -173,7 +172,7 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies, emul
 
 
   const handleStatusChange = (variantId: string, nextStatus: string) => {
-    const now = emulatedDate;
+    const now = getTodayDate();
     setStrategies(prev => prev.map(s => ({
       ...s,
       variants: s.variants.map(v => {

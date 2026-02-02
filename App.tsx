@@ -10,39 +10,21 @@ import { AppView, StrategyItem } from './types';
 const INITIAL_STRATEGIES: StrategyItem[] = [];
 
 const App: React.FC = () => {
-  const formatDate = (d: Date) => {
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
   const [activeView, setActiveView] = useState<AppView>(AppView.CREATIVES);
   const [strategies, setStrategies] = useState<StrategyItem[]>(INITIAL_STRATEGIES);
-  const [emulatedDate, setEmulatedDate] = useState<string>(formatDate(new Date()));
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value; // YYYY-MM-DD
-    if (!val) {
-      setEmulatedDate(formatDate(new Date()));
-      return;
-    }
-    const [y, m, d] = val.split('-');
-    setEmulatedDate(`${d}/${m}/${y}`);
-  };
 
   const renderView = () => {
     switch (activeView) {
       case AppView.CREATIVES:
-        return <CreativeStrategist strategies={strategies} setStrategies={setStrategies} emulatedDate={emulatedDate} />;
+        return <CreativeStrategist strategies={strategies} setStrategies={setStrategies} />;
       case AppView.EDITOR:
-        return <Editor strategies={strategies} setStrategies={setStrategies} emulatedDate={emulatedDate} />;
+        return <Editor strategies={strategies} setStrategies={setStrategies} />;
       case AppView.VA:
-        return <Validation strategies={strategies} setStrategies={setStrategies} emulatedDate={emulatedDate} />;
+        return <Validation strategies={strategies} setStrategies={setStrategies} />;
       case AppView.REVIEW:
-        return <Review strategies={strategies} setStrategies={setStrategies} emulatedDate={emulatedDate} />;
+        return <Review strategies={strategies} setStrategies={setStrategies} />;
       default:
-        return <CreativeStrategist strategies={strategies} setStrategies={setStrategies} emulatedDate={emulatedDate} />;
+        return <CreativeStrategist strategies={strategies} setStrategies={setStrategies} />;
     }
   };
 
@@ -55,20 +37,6 @@ const App: React.FC = () => {
             <span className="text-sm font-medium text-gray-500 uppercase tracking-wider font-bold">Visionary Dashboard</span>
             <span className="text-gray-400">/</span>
             <span className="text-sm font-black text-indigo-600 uppercase tracking-widest">{activeView}</span>
-          </div>
-
-          <div className="flex items-center space-x-4 bg-amber-50 border border-amber-200 px-4 py-1.5 rounded-xl shadow-sm">
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest leading-none mb-1">Testing: Emulated Date</span>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="date"
-                  onChange={handleDateChange}
-                  className="text-[10px] bg-white border border-amber-300 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-amber-500 font-bold"
-                />
-                <span className="text-[10px] font-mono font-bold text-amber-700 bg-white px-2 py-0.5 rounded border border-amber-200 shadow-inner">{emulatedDate}</span>
-              </div>
-            </div>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -89,5 +57,6 @@ const App: React.FC = () => {
     </div>
   );
 };
+
 
 export default App;
