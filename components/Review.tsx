@@ -1,11 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { StrategyItem, Variant } from '../types';
 import { getTodayDate } from '../utils';
-
-interface ReviewProps {
-    strategies: StrategyItem[];
-    setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-}
+import { useStrategy } from '../src/context/StrategyContext';
 
 const REVIEW_STATUS_OPTIONS = [
     { label: 'Running', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -13,7 +9,8 @@ const REVIEW_STATUS_OPTIONS = [
     { label: 'Needs Spend', color: 'bg-amber-100 text-amber-800 border-amber-200' },
 ];
 
-const Review: React.FC<ReviewProps> = ({ strategies, setStrategies }) => {
+const Review: React.FC = () => {
+    const { strategies, updateVariant } = useStrategy();
     const [selectedDetailText, setSelectedDetailText] = useState<string | null>(null);
 
     // Filter State
@@ -45,10 +42,15 @@ const Review: React.FC<ReviewProps> = ({ strategies, setStrategies }) => {
                 if (hideOff && status === 'Off') return false;
                 if (hideNeedsSpend && status === 'Needs Spend') return false;
 
-                // Date filtering
+                // Date filtering - always include variants with missing launchDate
                 if (appliedStartDate || appliedEndDate) {
-                    if (!v.launchDate) return true;
+                    // If no launch date, always include (treat as "Unknown")
+                    if (!v.launchDate || v.launchDate.trim() === '') return true;
+
                     const vTime = parseDate(v.launchDate);
+                    // If date parsing failed (returns 0), include the variant
+                    if (vTime === 0) return true;
+
                     const startTime = appliedStartDate ? new Date(appliedStartDate).getTime() : 0;
                     const endTime = appliedEndDate ? new Date(appliedEndDate).getTime() : Infinity;
                     if (vTime < startTime || vTime > endTime) return false;
@@ -59,11 +61,24 @@ const Review: React.FC<ReviewProps> = ({ strategies, setStrategies }) => {
     }, [strategies, hideOff, hideNeedsSpend, appliedStartDate, appliedEndDate]);
 
     const calculateDaysSinceLaunch = (launchDate: string): string => {
-        if (!launchDate) return '-';
+        // Handle missing or empty launch date
+        if (!launchDate || launchDate.trim() === '') return '-';
+
         const parts = launchDate.split('/');
         if (parts.length !== 3) return '-';
 
-        const launch = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+        // Validate date parts are numbers
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        const year = parseInt(parts[2]);
+
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return '-';
+
+        const launch = new Date(year, month - 1, day);
+
+        // Check if date is valid
+        if (isNaN(launch.getTime())) return '-';
+
         const now = new Date();
         const diffTime = Math.abs(now.getTime() - launch.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -72,12 +87,7 @@ const Review: React.FC<ReviewProps> = ({ strategies, setStrategies }) => {
     };
 
     const handleReviewStatusChange = (variantId: string, newStatus: string) => {
-        setStrategies(prev => prev.map(s => ({
-            ...s,
-            variants: s.variants.map(v =>
-                v.id === variantId ? { ...v, reviewStatus: newStatus } : v
-            )
-        })));
+        updateVariant(variantId, { reviewStatus: newStatus });
     };
 
     const getStatusColor = (status: string) => {

@@ -1,11 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StrategyItem, Variant } from '../types';
 import { getTodayDate } from '../utils';
-
-interface CreativeStrategistProps {
-  strategies: StrategyItem[];
-  setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-}
+import { useStrategy } from '../src/context/StrategyContext';
 
 const PRODUCT_OPTIONS = [
   'Stainless Steel Tap Filter',
@@ -37,7 +33,8 @@ const LANDING_PAGE_OPTIONS = [
   { label: 'Listicle', color: 'bg-amber-100 text-amber-800 border-amber-200', activeRing: 'ring-amber-500' },
 ];
 
-const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, setStrategies }) => {
+const CreativeStrategist: React.FC = () => {
+  const { strategies, addStrategy, addVariant, updateVariant, deleteStrategy, deleteVariant } = useStrategy();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(['1', '2', '3', '4']));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
@@ -182,28 +179,20 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
       return;
     }
 
-    setStrategies(prev => prev.map(s => s.id === strategyId ? {
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === variantId) {
-          let updated = { ...v, status: nextStatus };
-          if (nextStatus === 'In Progress') {
-            updated.reviewDate = '';
-            updated.editDate = '';
-            updated.compDate = '';
-            updated.launchDate = '';
-          } else if (nextStatus === 'Ready to edit') {
-            if (!v.reviewDate) updated.reviewDate = now;
-            updated.editDate = '';
-            updated.compDate = '';
-            updated.launchDate = '';
-          }
-          return updated;
-        }
-        return v;
-      })
-    } : s));
+    let updates: Partial<Variant> = { status: nextStatus };
+    if (nextStatus === 'In Progress') {
+      updates.reviewDate = '';
+      updates.editDate = '';
+      updates.compDate = '';
+      updates.launchDate = '';
+    } else if (nextStatus === 'Ready to edit') {
+      if (!variant?.reviewDate) updates.reviewDate = now;
+      updates.editDate = '';
+      updates.compDate = '';
+      updates.launchDate = '';
+    }
 
+    updateVariant(variantId, updates);
   };
 
   const handleAddClick = () => {
@@ -321,10 +310,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
 
   const saveScriptLink = () => {
     if (!editingScriptVariant) return;
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => v.id === editingScriptVariant.id ? { ...v, scriptLink: scriptUrlInput } : v)
-    })));
+    updateVariant(editingScriptVariant.id, { scriptLink: scriptUrlInput });
     setEditingScriptVariant(null);
     setScriptUrlInput('');
   };
@@ -344,7 +330,7 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
     setIsVariantModalOpen(true);
   };
 
-  const handleSaveVariant = () => {
+  const handleSaveVariant = async () => {
     const headerId = activeHeaderIdForVariant;
     if (!headerId) return;
 
@@ -353,39 +339,38 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
       return;
     }
 
+    // Close modal immediately for better responsiveness
+    setIsVariantModalOpen(false);
+    setEditingVariantId(null);
+    setActiveHeaderIdForVariant(null);
+    setIsEditMode(false);
+
     const now = getTodayDate();
 
     if (editingVariantId) {
-      setStrategies(strategies.map(s => s.id === headerId ? {
-        ...s,
-        variants: s.variants.map(v => {
-          if (v.id === editingVariantId) {
-            const updated = {
-              ...v,
-              name: newVariant.name!,
-              status: newVariant.status!,
-              landingPage: newVariant.landingPage!,
-              target: newVariant.target!,
-              concept: newVariant.concept!,
-              scriptLink: newVariant.scriptLink,
-            };
-            if (newVariant.status === 'In Progress') {
-              updated.reviewDate = '';
-            } else if (newVariant.status === 'Ready to edit') {
-              if (!v.reviewDate) updated.reviewDate = now;
-              // Clear editDate to force "Pending" status in production
-              updated.editDate = '';
-            }
+      const updates: Partial<Variant> = {
+        name: newVariant.name!,
+        status: newVariant.status!,
+        landingPage: newVariant.landingPage!,
+        target: newVariant.target!,
+        concept: newVariant.concept!,
+        scriptLink: newVariant.scriptLink,
+      };
 
-            return updated;
-          }
-          return v;
-        })
-      } : s));
+      if (newVariant.status === 'In Progress') {
+        updates.reviewDate = '';
+      } else if (newVariant.status === 'Ready to edit') {
+        const strategy = strategies.find(s => s.id === headerId);
+        const variant = strategy?.variants.find(v => v.id === editingVariantId);
+        if (!variant?.reviewDate) updates.reviewDate = now;
+        updates.editDate = '';
+      }
+
+      await updateVariant(editingVariantId, updates);
     } else {
-      const variant: Variant = {
-        id: Date.now().toString(),
+      const variant: Omit<Variant, 'id'> = {
         headerId: headerId,
+        strategyId: headerId,
         name: newVariant.name!,
         status: newVariant.status!,
         createdDate: getTodayDate(),
@@ -397,20 +382,12 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
         scriptLink: newVariant.scriptLink,
       };
 
-      setStrategies(strategies.map(s => s.id === headerId ? {
-        ...s,
-        variants: [...s.variants, variant]
-      } : s));
+      await addVariant(variant, headerId);
 
       const newExpanded = new Set(expandedRows);
       newExpanded.add(headerId);
       setExpandedRows(newExpanded);
     }
-
-    setIsVariantModalOpen(false);
-    setEditingVariantId(null);
-    setActiveHeaderIdForVariant(null);
-    setIsEditMode(false);
   };
 
   const handleCloseModal = () => {
@@ -419,47 +396,55 @@ const CreativeStrategist: React.FC<CreativeStrategistProps> = ({ strategies, set
     setNewStrategy({ product: '', format: '', description: '', batchCode: '' });
   };
 
-  const handleSaveStrategy = () => {
+  const handleSaveStrategy = async () => {
     if (!isFormValid) return;
 
-    if (editingItemId) {
-      setStrategies(strategies.map(s => s.id === editingItemId ? {
-        ...s,
+    // Close modal immediately for better responsiveness
+    const isEditing = !!editingItemId;
+    const currentEditingId = editingItemId;
+    handleCloseModal();
+
+    if (isEditing && currentEditingId) {
+      // For editing, we need to update the strategy document
+      // Note: Firebase doesn't have a direct updateStrategy method in our context
+      // We'll need to delete and recreate, or add updateStrategy to context
+      // For now, let's use a workaround by deleting variants and recreating
+      const strategy = strategies.find(s => s.id === currentEditingId);
+      if (strategy) {
+        await deleteStrategy(currentEditingId);
+        const strategyData: Omit<StrategyItem, 'id' | 'variants'> = {
+          product: newStrategy.product,
+          format: newStrategy.format,
+          batchCode: newStrategy.batchCode,
+          description: newStrategy.description
+        };
+        const newId = await addStrategy(strategyData);
+        // Re-add variants
+        for (const variant of strategy.variants) {
+          const { id, ...variantData } = variant;
+          await addVariant({ ...variantData, strategyId: newId }, newId);
+        }
+      }
+      setIsEditMode(false);
+    } else {
+      const strategyData: Omit<StrategyItem, 'id' | 'variants'> = {
         product: newStrategy.product,
         format: newStrategy.format,
         batchCode: newStrategy.batchCode,
         description: newStrategy.description
-      } : s));
-      setIsEditMode(false);
-    } else {
-      const newItem: StrategyItem = {
-        id: Date.now().toString(),
-        product: newStrategy.product,
-        format: newStrategy.format,
-        batchCode: newStrategy.batchCode,
-        description: newStrategy.description,
-        variants: []
       };
-      setStrategies([...strategies, newItem]);
+      await addStrategy(strategyData);
     }
-    handleCloseModal();
   };
 
-  const executeDelete = () => {
+  const executeDelete = async () => {
     if (rowToDelete) {
-      setStrategies(prev => prev.filter(s => s.id !== rowToDelete.id));
+      await deleteStrategy(rowToDelete.id);
       const nextExpanded = new Set(expandedRows);
       nextExpanded.delete(rowToDelete.id);
       setExpandedRows(nextExpanded);
     } else if (variantToDelete) {
-      setStrategies(prev => prev.map(s =>
-        s.id === variantToDelete.headerId
-          ? {
-            ...s,
-            variants: s.variants.filter(v => v.id !== variantToDelete.id)
-          }
-          : s
-      ));
+      await deleteVariant(variantToDelete.id);
     }
     setRowToDelete(null);
     setVariantToDelete(null);

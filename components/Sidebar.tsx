@@ -12,6 +12,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: AppView.EDITOR, label: 'Editor', icon: 'fa-solid fa-clapperboard' },
   { id: AppView.VA, label: 'VA', icon: 'fa-solid fa-list-check' },
   { id: AppView.REVIEW, label: 'Review', icon: 'fa-solid fa-chart-line' },
+  { id: AppView.DATABASE, label: 'Database', icon: 'fa-solid fa-database' },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
@@ -33,8 +34,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange }) => {
                 key={item.id}
                 onClick={() => onViewChange(item.id)}
                 className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 group ${isActive
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-indigo-600 text-white shadow-lg'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                   }`}
               >
                 <i className={`${item.icon} text-lg ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-indigo-400'}`}></i>

@@ -1,11 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { StrategyItem, Variant } from '../types';
 import { getTodayDate } from '../utils';
-
-interface ValidationProps {
-  strategies: StrategyItem[];
-  setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-}
+import { useStrategy } from '../src/context/StrategyContext';
 
 const VA_STATUS_OPTIONS = [
   { label: 'Ready to Launch', color: 'bg-emerald-100 text-emerald-800 border-emerald-200 font-bold' },
@@ -16,7 +12,8 @@ const VA_STATUS_OPTIONS = [
 
 
 
-const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies }) => {
+const Validation: React.FC = () => {
+  const { strategies, updateVariant } = useStrategy();
   const [selectedDetailText, setSelectedDetailText] = useState<string | null>(null);
 
   const [hideLive, setHideLive] = useState(false);
@@ -91,18 +88,7 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies }) =>
 
 
   const handleApprove = (variantId: string) => {
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === variantId) {
-          // Only updating status to Ready to Launch, preserving all dates. 
-          // launchDate remains empty until set to Live.
-          return { ...v, status: 'Ready to Launch', launchDate: '' };
-        }
-
-        return v;
-      })
-    })));
+    updateVariant(variantId, { status: 'Ready to Launch', launchDate: '' });
   };
 
 
@@ -115,25 +101,18 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies }) =>
       return;
     }
     const now = getTodayDate();
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === variantId) {
-          const newHistory = [...(v.rejectionHistory || []), { source: 'VA' as const, message: rejectionReason, destination: 'Strategist' as const }];
-          return {
-            ...v,
-            status: 'Rejected',
-            launchDate: '',
-            reviewDate: '',
-            compDate: '',
-            editDate: '',
-            rejectionHistory: newHistory
-          };
-        }
+    const variant = strategies.flatMap(s => s.variants).find(v => v.id === variantId);
+    const newHistory = [...(variant?.rejectionHistory || []), { source: 'VA' as const, message: rejectionReason, destination: 'Strategist' as const }];
 
-        return v;
-      })
-    })));
+    updateVariant(variantId, {
+      status: 'Rejected',
+      launchDate: '',
+      reviewDate: '',
+      compDate: '',
+      editDate: '',
+      rejectionHistory: newHistory
+    });
+
     setRejectionModalVariantId(null);
     setRejectionDestination(null);
     setRejectionReason('');
@@ -145,25 +124,18 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies }) =>
       return;
     }
     const now = getTodayDate();
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === variantId) {
-          const newHistory = [...(v.rejectionHistory || []), { source: 'VA' as const, message: rejectionReason, destination: 'Editor' as const }];
-          return {
-            ...v,
-            status: 'Rejected', // Technical accuracy for production queue
-            reviewDate: now,
-            editDate: v.editDate, // Preserve existing production start date
-            compDate: '',         // Clear completion date on rejection
-            launchDate: '',       // Ensure launchDate is clear
-            rejectionHistory: newHistory
-          };
-        }
+    const variant = strategies.flatMap(s => s.variants).find(v => v.id === variantId);
+    const newHistory = [...(variant?.rejectionHistory || []), { source: 'VA' as const, message: rejectionReason, destination: 'Editor' as const }];
 
-        return v;
-      })
-    })));
+    updateVariant(variantId, {
+      status: 'Rejected',
+      reviewDate: now,
+      editDate: variant?.editDate || '',
+      compDate: '',
+      launchDate: '',
+      rejectionHistory: newHistory
+    });
+
     setRejectionModalVariantId(null);
     setRejectionDestination(null);
     setRejectionReason('');
@@ -172,23 +144,15 @@ const Validation: React.FC<ValidationProps> = ({ strategies, setStrategies }) =>
 
 
   const handleStatusChange = (variantId: string, nextStatus: string) => {
-    const now = getTodayDate();
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === variantId) {
-          const updated = { ...v, status: nextStatus };
-          if (nextStatus === 'Live') {
-            updated.launchDate = now;
-          } else {
-            // Requirement: launchDate set only when Live
-            updated.launchDate = '';
-          }
-          return updated;
-        }
-        return v;
-      })
-    })));
+    const updates: Partial<Variant> = { status: nextStatus };
+
+    if (nextStatus === 'Live') {
+      updates.launchDate = getTodayDate();
+    } else if (nextStatus === 'Ready to Launch') {
+      updates.launchDate = '';
+    }
+
+    updateVariant(variantId, updates);
   };
 
 

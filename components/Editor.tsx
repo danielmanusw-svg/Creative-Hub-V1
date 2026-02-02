@@ -1,11 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { StrategyItem, Variant } from '../types';
 import { getTodayDate } from '../utils';
-
-interface EditorProps {
-  strategies: StrategyItem[];
-  setStrategies: React.Dispatch<React.SetStateAction<StrategyItem[]>>;
-}
+import { useStrategy } from '../src/context/StrategyContext';
 
 const STATUS_OPTIONS = [
   { label: 'Ready to edit', color: 'bg-green-100 text-green-800 border-green-200' },
@@ -15,7 +11,8 @@ const STATUS_OPTIONS = [
 ];
 
 
-const Editor: React.FC<EditorProps> = ({ strategies, setStrategies }) => {
+const Editor: React.FC = () => {
+  const { strategies, updateVariant } = useStrategy();
   const [isEditMode, setIsEditMode] = useState(false);
   const [hideCompleted, setHideCompleted] = useState(false);
   const [editingVideoVariant, setEditingVideoVariant] = useState<Variant | null>(null);
@@ -104,10 +101,7 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies }) => {
 
   const handleAccept = (variantId: string) => {
     const now = getTodayDate();
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => v.id === variantId ? { ...v, editDate: now } : v)
-    })));
+    updateVariant(variantId, { editDate: now });
   };
 
   const handleApplyDateFilter = () => {
@@ -138,23 +132,17 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies }) => {
       return;
     }
 
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === rejectionModalVariantId) {
-          const newHistory = [...(v.rejectionHistory || []), { source: 'Editor' as const, message: rejectionReason }];
-          return {
-            ...v,
-            status: 'Rejected',
-            editDate: '',
-            reviewDate: '',
-            compDate: '', // Clear completion date on rejection
-            rejectionHistory: newHistory
-          };
-        }
-        return v;
-      })
-    })));
+    const variant = strategies.flatMap(s => s.variants).find(v => v.id === rejectionModalVariantId);
+    const newHistory = [...(variant?.rejectionHistory || []), { source: 'Editor' as const, message: rejectionReason }];
+
+    updateVariant(rejectionModalVariantId, {
+      status: 'Rejected',
+      editDate: '',
+      reviewDate: '',
+      compDate: '',
+      rejectionHistory: newHistory
+    });
+
     setRejectionModalVariantId(null);
     setRejectionReason('');
   };
@@ -178,32 +166,19 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies }) => {
       }
     }
 
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => {
-        if (v.id === variantId) {
-          if (nextStatus === 'Rejected' && v.status !== 'Rejected') {
-            setErrorModal({ show: true, message: 'Rows can only be set to "Rejected" via the rejection workflow.' });
-            return v;
-          }
-          const updated = { ...v, status: nextStatus };
-          if (nextStatus === 'Completed') {
-            updated.compDate = now;
-          } else if (nextStatus === 'Ready to edit') {
-            updated.compDate = '';
-          }
+    if (nextStatus === 'Rejected' && currentVariant?.status !== 'Rejected') {
+      setErrorModal({ show: true, message: 'Rows can only be set to "Rejected" via the rejection workflow.' });
+      return;
+    }
 
-          // If moving from Rejected back to Ready to edit, preserve the editDate
-          if (v.status === 'Rejected' && nextStatus === 'Ready to edit') {
-            // editDate already present
-          }
-          return updated;
+    const updates: Partial<Variant> = { status: nextStatus };
+    if (nextStatus === 'Completed') {
+      updates.compDate = now;
+    } else if (nextStatus === 'Ready to edit') {
+      updates.compDate = '';
+    }
 
-        }
-        return v;
-      })
-    })));
-
+    updateVariant(variantId, updates);
   };
 
   const handleVideoClick = (e: React.MouseEvent, v: Variant) => {
@@ -229,10 +204,7 @@ const Editor: React.FC<EditorProps> = ({ strategies, setStrategies }) => {
 
   const saveVideoLink = () => {
     if (!editingVideoVariant) return;
-    setStrategies(prev => prev.map(s => ({
-      ...s,
-      variants: s.variants.map(v => v.id === editingVideoVariant.id ? { ...v, videoLink: videoUrlInput } : v)
-    })));
+    updateVariant(editingVideoVariant.id, { videoLink: videoUrlInput });
     setEditingVideoVariant(null);
     setVideoUrlInput('');
   };

@@ -1,30 +1,31 @@
 
+
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import CreativeStrategist from './components/CreativeStrategist';
 import Editor from './components/Editor';
 import Validation from './components/Validation';
 import Review from './components/Review';
-import { AppView, StrategyItem } from './types';
-
-const INITIAL_STRATEGIES: StrategyItem[] = [];
+import AdminDashboard from './components/AdminDashboard';
+import { AppView } from './types';
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState<AppView>(AppView.CREATIVES);
-  const [strategies, setStrategies] = useState<StrategyItem[]>(INITIAL_STRATEGIES);
 
   const renderView = () => {
     switch (activeView) {
       case AppView.CREATIVES:
-        return <CreativeStrategist strategies={strategies} setStrategies={setStrategies} />;
+        return <CreativeStrategist />;
       case AppView.EDITOR:
-        return <Editor strategies={strategies} setStrategies={setStrategies} />;
+        return <Editor />;
       case AppView.VA:
-        return <Validation strategies={strategies} setStrategies={setStrategies} />;
+        return <Validation />;
       case AppView.REVIEW:
-        return <Review strategies={strategies} setStrategies={setStrategies} />;
+        return <Review />;
+      case AppView.DATABASE:
+        return <AdminDashboard />;
       default:
-        return <CreativeStrategist strategies={strategies} setStrategies={setStrategies} />;
+        return <CreativeStrategist />;
     }
   };
 
@@ -57,6 +58,5 @@ const App: React.FC = () => {
     </div>
   );
 };
-
 
 export default App;

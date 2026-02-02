@@ -1,14 +1,17 @@
 
+
 export enum AppView {
   CREATIVES = 'Creatives',
   EDITOR = 'Editor',
   VA = 'VA',
-  REVIEW = 'Review'
+  REVIEW = 'Review',
+  DATABASE = 'Database'
 }
 
 export interface Variant {
   id: string;
   headerId: string;
+  strategyId: string; // For Firebase - links to strategy document
   name: string;
   status: string;
   createdDate: string;
